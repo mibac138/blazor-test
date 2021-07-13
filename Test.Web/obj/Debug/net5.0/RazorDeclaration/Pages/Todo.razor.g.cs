@@ -89,20 +89,6 @@ using Test.Web.Data;
 #line default
 #line hidden
 #nullable disable
-#nullable restore
-#line 3 "C:\Users\a825104\RiderProjects\Test\Test.Web\Pages\Todo.razor"
-using Microsoft.EntityFrameworkCore;
-
-#line default
-#line hidden
-#nullable disable
-#nullable restore
-#line 4 "C:\Users\a825104\RiderProjects\Test\Test.Web\Pages\Todo.razor"
-using Microsoft.Extensions.Options;
-
-#line default
-#line hidden
-#nullable disable
     [Microsoft.AspNetCore.Components.RouteAttribute("/todo")]
     public partial class Todo : Microsoft.AspNetCore.Components.ComponentBase
     {
@@ -112,14 +98,13 @@ using Microsoft.Extensions.Options;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 29 "C:\Users\a825104\RiderProjects\Test\Test.Web\Pages\Todo.razor"
+#line 26 "C:\Users\a825104\RiderProjects\Test\Test.Web\Pages\Todo.razor"
        
 
     [Inject]
-    private AppDbCtx db { get; set; }
+    private AppDbCtx Db { get; set; }
 
-    private List<TodoItem> items = new();
-    private string newTodo = "";
+    private List<TodoItem> _items = new();
 
     private TodoItem? _editorState = null;
 
@@ -127,44 +112,31 @@ using Microsoft.Extensions.Options;
 
     protected override Task OnInitializedAsync()
     {
-        items = db.TodoItems.OrderByDescending(item => item.Created).ToList();
+        _items = Db.TodoItems.OrderByDescending(item => item.Created).ToList();
         return base.OnInitializedAsync();
     }
 
-    private void AddTodo(TodoItem item)
+    private Task OnClose()
     {
-        if (string.IsNullOrWhiteSpace(item.Title)) return;
-
-        item = item.Id == null ? db.Add(item).Entity : db.Update(item).Entity;
-
-        try
-        {
-            if (db.SaveChanges() != 1)
-            {
-                Console.WriteLine("Failed to save a new todo item");
-            }
-        }
-        catch (DbUpdateException e)
-        {
-            Console.WriteLine($"Failed to save a new todo item: {e}");
-        }
-
-        var existingIndex = items.FindIndex(listItem => listItem.Id == item.Id);
+        _editorState = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+    
+    private Task AddTodo(TodoItem item)
+    {
+        var existingIndex = _items.FindIndex(listItem => listItem.Id == item.Id);
         if (existingIndex != -1)
         {
-            items[existingIndex] = item;
+            _items[existingIndex] = item;
         }
         else
         {
-            items.Insert(0, item);
+            _items.Insert(0, item);
         }
         _editorState = null;
         StateHasChanged();
-    }
-
-    private void Save()
-    {
-        db.SaveChanges();
+        return Task.CompletedTask;
     }
 
 

@@ -1,16 +1,57 @@
 ﻿@using Test.Web.Data
+@using Microsoft.EntityFrameworkCore
 <h3>TodoEditor</h3>
 
-<input placeholder="Something todo" @bind="item.Title"/>
-<button @onclick="() => onsave(item)">Save</button>
-<button @onclick="onclose">Cancel</button>
+<input placeholder="Something todo" @bind="Item.Title"/>
+<button @onclick="OnSaveHandle">Save</button>
+<button @onclick="OnCloseHandle">Cancel</button>
 
 @code {
-    [Parameter] public TodoItem item { get; set; }
+    [Inject]
+    private AppDbCtx Db { get; set; }
 
     [Parameter]
-    public Action<TodoItem> onsave { get; set; }
+    public TodoItem Item { get; set; }
+
+    private TodoItem _original;
     
     [Parameter]
-    public Action onclose { get; set; }
+    public Func<TodoItem, Task> OnSaved { get; set; }
+    
+    [Parameter]
+    public Func<Task> OnClose { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _original = new();
+        _original.CopyFrom(Item);
+    }
+
+    private async void OnSaveHandle()
+    {
+        if (string.IsNullOrWhiteSpace(Item.Title)) return;
+        
+        var item = Item.Id == null ? Db.Add(Item).Entity : Db.Update(Item).Entity;
+
+        try
+        {
+            if (await Db.SaveChangesAsync() != 1)
+            {
+                Console.WriteLine("Failed to save a new todo item");
+            }
+        }
+        catch (DbUpdateException e)
+        {
+            Console.WriteLine($"Failed to save a new todo item: {e}");
+        }
+        
+        await (OnSaved?.Invoke(item) ?? Task.CompletedTask);
+    }
+    
+    private Task OnCloseHandle()
+    {
+        Item.CopyFrom(_original);
+        return OnClose?.Invoke() ?? Task.CompletedTask;
+    }
+
 }
