@@ -136,12 +136,10 @@ using MoreLinq.Extensions;
                 {
                     error = true;
                     var id = string.IsNullOrEmpty(node.Id) ? "<none>" : node.Id;
-                    message = $"Input with id `{id}` has invalid name: `{name}`.";
-                    var sugg = FindClosestLevenshtein(name, allowedNames);
-                    if (sugg != null)
-                    {
-                        message += $" Did you mean `{sugg}`?";
-                    }
+                    var suggested = TryFindClosestLevenshtein(name, allowedNames, out var sugg)
+                        ? $" Did you mean {sugg}?"
+                        : string.Empty;
+                    message = $"Input with id `{id}` has invalid name: `{name}`.{suggested}";
                     return;
                 }
             }
@@ -155,19 +153,26 @@ using MoreLinq.Extensions;
         }
     }
 
-    private static string? FindClosestLevenshtein(string toFind, IEnumerable<string> available)
+    private static bool TryFindClosestLevenshtein(string toFind, IEnumerable<string> available, out string matched)
     {
+        matched = string.Empty;
         var match = available
             .Select(name => (name, LevenshteinDistance(name, toFind)))
             .MinBy(tuple => tuple.Item2)
             .FirstOrDefault();
-        if (match.Item2 /* distance */ > 6)
+        if (match.Item2 /* distance */> 6)
         {
-            // If the closest match and actual values differ by more than 6 characters, don't emit the suggestion
-            return null;
+    // If the closest match and actual values differ by more than 6 characters, don't emit the suggestion
+            return false;
         }
-        
-        return match == default ? null : match.name;
+
+        if (match == default)
+        {
+            return false;
+        }
+
+        matched = match.name;
+        return true;
     }
 
     private static int LevenshteinDistance(string s, string t)
